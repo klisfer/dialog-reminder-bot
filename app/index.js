@@ -39,7 +39,7 @@ const scheduleOptions = [
 var mentions = [];
 var addedToGroups = [];
 var groupsToTrack = [];
-const currentUser = { name: "", peer: "" };
+const currentUser = { name: "", peer: ""  , nick: ""};
 var scheduledTime = "";
 
 dotenv.config();
@@ -70,7 +70,7 @@ const self = bot
 
 bot.updateSubject.subscribe({
   next(update) {
-    console.log(JSON.stringify({ update }, null, 2));
+    // console.log(JSON.stringify({ update }, null, 2));
   }
 });
 
@@ -93,7 +93,7 @@ bot.ready.then(response => {
 const messagesHandle = bot.subscribeToMessages().pipe(
   flatMap(async message => {
     const wordsArray = message.content.text.split(" ");
-    const user_current = "@" + currentUser.name;
+    const user_current = "@" + currentUser.nick;
     const content = message.content;
     const peer = message.peer;
     //conditions to check for user mentions.
@@ -108,6 +108,7 @@ const messagesHandle = bot.subscribeToMessages().pipe(
       peer.type === "group" &&
       containsValue(groupsToTrack, peer.id) === true
     ) {
+      console.log("reachedhere");
       addMentions(message);
     } else if (
       content.type === "text" &&
@@ -216,6 +217,8 @@ async function getCurrentUser(bot, peer) {
   const user = await bot.getUser(peer.id);
   currentUser.name = user.name;
   currentUser.peer = peer;
+  currentUser.nick = user.nick
+  
 }
 
 async function addBotToTrackableGroups() {
