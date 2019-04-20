@@ -14,7 +14,7 @@ You can clone the respository or download the zip file.
 ```sh
    
    BOT_TOKEN=xxxxxxxxxxxxx
-   BOT_ENDPOINT="https://grpc-test.transmit.im:9443",
+   BOT_ENDPOINT=https://grpc-test.transmit.im:9443
    START_TRACK_MENTIONS=start
    STOP_TRACK_MENTIONS=stop
    SCHEDULE_MENTIONS=schedule    
