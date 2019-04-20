@@ -163,7 +163,7 @@ function scheduleCustomReminder(hour, min) {
   const timeLeft = moment(scheduledTime, "HH:mm").diff(moment(now, "HH:mm"));
 
   if (timeLeft < 0) {
-    sendTextMessage("Selected time has passed, try again");
+    sendTextMessage("Selected time has passed, start again");
     specifiedTime.hour = null;
     specifiedTime.min = null;
   } else {
