@@ -107,12 +107,10 @@ const actionsHandle = bot.subscribeToActions().pipe(
   flatMap(async event => {
     if (event.id === "Hour") {
       specifiedTime.hour = event.value;
-
       if (specifiedTime.min !== null && specifiedTime.hour !== null)
         scheduleCustomReminder(specifiedTime.hour, specifiedTime.min);
     } else if (event.id === "Minutes") {
       specifiedTime.min = event.value;
-
       if (specifiedTime.min !== null && specifiedTime.hour !== null)
         scheduleCustomReminder(specifiedTime.hour, specifiedTime.min);
     } else if (event.id === "30 mins") {
