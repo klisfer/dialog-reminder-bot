@@ -34,6 +34,7 @@ var mentions = [];
 var addedToGroups = [];
 var groupsToTrack = [];
 const currentUser = { name: "", peer: "", nick: "" };
+const trackableUsers = [];
 var specifiedTime = { hour: null, min: null };
 var scheduledTime = "";
 
@@ -71,24 +72,18 @@ bot.updateSubject.subscribe({
 
 bot.ready.then(response => {
   //mapping the groups the bot has been added to
-  response.groups.forEach(group => {
-    const newGroup = { id: group.id, name: group.title };
-    addedToGroups.push(newGroup);
-  });
-
-  //mapping the current user
-  response.dialogs.forEach(peer => {
-    if (peer.type === "private") {
-      getCurrentUser(bot, peer);
-    }
-  });
+  response.groups
+    .forEach(group => {
+      const newGroup = { id: group.id, name: group.title };
+      addedToGroups.push(newGroup);
+    })
+    addBotToTrackableGroups();
 });
 
 //subscribing to incoming messages
 const messagesHandle = bot.subscribeToMessages().pipe(
   flatMap(async message => {
     const wordsArray = message.content.text.split(" ");
-    const user_current = "@" + currentUser.nick;
     const content = message.content;
     const peer = message.peer;
     //conditions to check for user mentions.
@@ -96,14 +91,24 @@ const messagesHandle = bot.subscribeToMessages().pipe(
       peer.type === "private" &&
       content.text === process.env.TRACK_MENTIONS
     ) {
-      await addBotToTrackableGroups();
+      const user = await getCurrentUser(bot , message.peer);
+      trackableUsers.push(user);
+      // console.log("TRACKABLE USERS", trackableUsers);
     } else if (
-      _.includes(wordsArray, user_current) &&
+      // _.includes(wordsArray, currentUser.nick) &&
       content.type === "text" &&
       peer.type === "group" &&
-      containsValue(groupsToTrack, peer.id) === true
+      containsValue(groupsToTrack, peer.id) === true 
     ) {
-      addMentions(message);
+      //checking if mentioned user is a part of users whose mentions are to be tracked.
+
+        wordsArray.map(word =>{   
+           if(_.find(trackableUsers , ['nick', word])){             
+             addMentions(message);
+           }
+        });
+
+      
     } else if (
       content.type === "text" &&
       peer.type === "private" &&
@@ -121,15 +126,19 @@ const messagesHandle = bot.subscribeToMessages().pipe(
       peer.type === "private" &&
       content.text === process.env.LIST_MENTIONS
     ) {
+      console.log("BOTPEER", bot ,message.peer)
+      const user = await getCurrentUser(bot , message.peer);
+      // let User = Object.assign(currentUser, user);
+      currentUser.name = user.name;
+      currentUser.peer = user.peer;
+      currentUser.nick = user.nick;
       if (mentions.length !== 0) listMentions(bot);
       else if (mentions.length === 0 && groupsToTrack.length === 0) {
         message.text =
           'Mentions tracking is turned off, To turn it on type "start tracking" without the qoutes ';
         sendTextToBot(bot, message);
-      } else if (mentions.length === 0 && groupsToTrack.length !== 0) {
-        message.text = "There are no mentions";
-        sendTextToBot(bot, message);
-      }
+      } 
+      
     } else if (
       content.type === "text" &&
       peer.type === "private" &&
@@ -143,10 +152,14 @@ const messagesHandle = bot.subscribeToMessages().pipe(
 //creating action handle
 const actionsHandle = bot.subscribeToActions().pipe(
   flatMap(async event => {
-    console.log(event);
+    // console.log(event);
     if (containsValue(groupsToTrack, Number(event.id)) === true) {
       removeGroupFromTrackableGroups(event.id);
-    } else if (containsValue(groupsToTrack, Number(event.id)) === false && event.id!== "Hour" && event.id!== "Minutes") {
+    } else if (
+      containsValue(groupsToTrack, Number(event.id)) === false &&
+      event.id !== "Hour" &&
+      event.id !== "Minutes"
+    ) {
       console.log("called");
       addGroupToTrackableGroups(event.id);
     }
@@ -155,16 +168,14 @@ const actionsHandle = bot.subscribeToActions().pipe(
     //   scheduleMentionsAction(bot, event);
     // }
 
-
-
     if (event.id === "Hour") {
       specifiedTime.hour = event.value;
-      console.log("specified" ,specifiedTime)
+      console.log("specified", specifiedTime);
       if (specifiedTime.min !== null && specifiedTime.hour !== null)
         scheduleCustomReminder(specifiedTime.hour, specifiedTime.min);
     } else if (event.id === "Minutes") {
       specifiedTime.min = event.value;
-      console.log("specified" ,specifiedTime)
+      console.log("specified", specifiedTime);
       if (specifiedTime.min !== null && specifiedTime.hour !== null)
         scheduleCustomReminder(specifiedTime.hour, specifiedTime.min);
     }
@@ -189,14 +200,13 @@ action handle functions
 function removeGroupFromTrackableGroups(value) {
   groupIndexToRemove = _.findIndex(groupsToTrack, function(o) {
     return o.id === Number(value);
-    
   });
 
   const messageToBot = {
     peer: currentUser.peer,
     text: groupsToTrack[groupIndexToRemove].name + " tracking disabled"
-  }
-  sendTextToBot( bot , messageToBot);
+  };
+  sendTextToBot(bot, messageToBot);
 
   groupsToTrack.splice(groupIndexToRemove, 1);
   listBotGroupSubscriptions(bot, messageToBot);
@@ -207,13 +217,12 @@ function addGroupToTrackableGroups(value) {
     return o.id === Number(value);
   });
   console.log("YOLO", groupToInsert);
-  
-  
+
   const messageToBot = {
     peer: currentUser.peer,
     text: groupToInsert.name + " tracking enabled"
-  }
-  sendTextToBot( bot , messageToBot);
+  };
+  sendTextToBot(bot, messageToBot);
 
   groupsToTrack.push(groupToInsert);
   listBotGroupSubscriptions(bot, messageToBot);
@@ -252,7 +261,7 @@ function scheduleCustomReminder(hour, min) {
     console.log("DONE");
     setTimeout(function() {
       // sendTextMessage(mentions);
-      listMentions(bot)
+      listMentions(bot);
     }, timeLeft);
 
     const successResponse = "Your mentions have been scheduled";
@@ -270,9 +279,9 @@ message handle functions
 ------ */
 async function getCurrentUser(bot, peer) {
   const user = await bot.getUser(peer.id);
-  currentUser.name = user.name;
-  currentUser.peer = peer;
-  currentUser.nick = user.nick;
+  const currentUser = new User( user.name , peer , user.nick );
+  console.log("USER", user);
+  return currentUser;
 }
 
 async function addBotToTrackableGroups() {
@@ -280,7 +289,6 @@ async function addBotToTrackableGroups() {
 }
 
 async function addMentions(message) {
-  console.log("reachedhere");
   const date = moment(message.date).format("MMMM Do YYYY, h:mm a");
   var group = "";
 
@@ -294,6 +302,9 @@ async function addMentions(message) {
     time: date
   };
   mentions.push(mention);
+
+
+  // console.log("reachedhere", mentions);
 }
 
 // function scheduleMentions(bot, message) {
@@ -320,28 +331,56 @@ async function addMentions(message) {
 // }
 
 function listMentions(bot) {
-  groups = [];
-
+  
+  let new_mentions = []
   mentions.map(mention => {
-    if (!_.includes(groups, mention.group)) {
-      groups.push(mention.group);
-    }
+     const wordsArray = mention.text.split(' ');
+     
+     console.log("WORDSARRAY", wordsArray);
+       if(wordsArray.includes(currentUser.nick)){
+            new_mentions.push(mention);
+       }
   });
 
-  groups.map(group => {
-    var mentionsInGroup = _.filter(mentions, { group: group });
-    var textToBot = `\n @${group} \n`;
-    mentionsInGroup.map(mention => {
-      textToBot += mention.time + ":" + mention.text + "\n";
-    });
+
+  if(new_mentions.length !== 0){
+      //send mentions to the user 
+      let groups = [];
+      console.log("NICK FOUND", new_mentions);
+      new_mentions.map(mention => {
+        if (!_.includes(groups, mention.group)) {
+          groups.push(mention.group);
+        }
+      });
+
+      groups.map(group => {
+      var mentionsInGroup = _.filter(new_mentions, { group: group });
+      var textToBot = `\n @${group} \n`;
+      mentionsInGroup.map(mention => {
+          textToBot += mention.time + ":" + mention.text + "\n";
+      });
+
+      var messageToSend = {
+        peer: currentUser.peer,
+        text: textToBot
+      };    
+
+      sendTextToBot(bot, messageToSend);
+      });
+
+  }else{
 
     var messageToSend = {
       peer: currentUser.peer,
-      text: textToBot
-    };
+      text: "You don't have any mentions"
+    };    
 
     sendTextToBot(bot, messageToSend);
-  });
+
+
+  }
+
+   
 }
 
 function listBotGroupSubscriptions(bot, message) {
@@ -393,7 +432,6 @@ function containsValue(array, value) {
   return valuePresent;
 }
 
-
 function sendTextMessage(text, actions) {
   console.log("actions", actions);
   var messageToSend = messageformat(text);
@@ -407,7 +445,6 @@ function sendTextMessage(text, actions) {
   console.log("actions", actionGroup);
   sendTextToBot(bot, messageToSend, actionGroup);
 }
-
 
 function actionFormat(actionOptions) {
   var actions = [];
@@ -437,7 +474,6 @@ function actionFormat(actionOptions) {
   return actions;
 }
 
-
 function selectOptionFormat(options) {
   var selectOptions = [];
   options.map(option => {
@@ -447,8 +483,14 @@ function selectOptionFormat(options) {
   return selectOptions;
 }
 
-
 function messageformat(text) {
   var message = { peer: currentUser.peer, text: text };
   return message;
+}
+
+function User(name, peer, nick) {
+  const nickname = `@${nick}`
+  this.name = name;
+  this.peer = peer;
+  this.nick = nickname;
 }
