@@ -93,9 +93,8 @@ const messagesHandle = bot.subscribeToMessages().pipe(
     ) {
       const user = await getCurrentUser(bot , message.peer);
       trackableUsers.push(user);
-      // console.log("TRACKABLE USERS", trackableUsers);
+      
     } else if (
-      // _.includes(wordsArray, currentUser.nick) &&
       content.type === "text" &&
       peer.type === "group" &&
       containsValue(groupsToTrack, peer.id) === true 
@@ -128,10 +127,7 @@ const messagesHandle = bot.subscribeToMessages().pipe(
     ) {
       console.log("BOTPEER", bot ,message.peer)
       const user = await getCurrentUser(bot , message.peer);
-      // let User = Object.assign(currentUser, user);
-      currentUser.name = user.name;
-      currentUser.peer = user.peer;
-      currentUser.nick = user.nick;
+      Object.assign(currentUser , user);
       if (mentions.length !== 0) listMentions(bot);
       else if (mentions.length === 0 && groupsToTrack.length === 0) {
         message.text =
@@ -152,7 +148,6 @@ const messagesHandle = bot.subscribeToMessages().pipe(
 //creating action handle
 const actionsHandle = bot.subscribeToActions().pipe(
   flatMap(async event => {
-    // console.log(event);
     if (containsValue(groupsToTrack, Number(event.id)) === true) {
       removeGroupFromTrackableGroups(event.id);
     } else if (
@@ -163,10 +158,6 @@ const actionsHandle = bot.subscribeToActions().pipe(
       console.log("called");
       addGroupToTrackableGroups(event.id);
     }
-
-    // if (event.id.toString() === "scheduleTime") {
-    //   scheduleMentionsAction(bot, event);
-    // }
 
     if (event.id === "Hour") {
       specifiedTime.hour = event.value;
@@ -260,7 +251,7 @@ function scheduleCustomReminder(hour, min) {
     listMentions(bot);
     console.log("DONE");
     setTimeout(function() {
-      // sendTextMessage(mentions);
+
       listMentions(bot);
     }, timeLeft);
 
@@ -304,31 +295,8 @@ async function addMentions(message) {
   mentions.push(mention);
 
 
-  // console.log("reachedhere", mentions);
-}
 
-// function scheduleMentions(bot, message) {
-//   var selectOptions = [];
-//   scheduleOptions.map(option => {
-//     selectOptions.push(new SelectOption(option.label, option.value));
-//   });
-//   const mid = bot.sendText(
-//     message.peer,
-//     "When do you want to schedule the mentions",
-//     MessageAttachment.reply(null),
-//     ActionGroup.create({
-//       actions: [
-//         Action.create({
-//           id: `scheduleTime`,
-//           widget: Select.create({
-//             label: "options",
-//             options: selectOptions
-//           })
-//         })
-//       ]
-//     })
-//   );
-// }
+}
 
 function listMentions(bot) {
   
