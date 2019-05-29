@@ -69,17 +69,17 @@ const self = bot
 
 bot.updateSubject.subscribe({
   next(update) {
-    console.log(JSON.stringify({ update }, null, 2));
+    // console.log(JSON.stringify({ update }, null, 2));
   }
 });
 
 bot.ready.then(async (response) => {
   //mapping the current user
   await response.dialogs.forEach(peer => {
-    console.log("PEER" , peer);
+    console.log("PEER1" , peer);
     if (peer.type === "private") {
-        getCurrentUser(bot, peer).then(user => {
-          sendFirstMessage(user.peer);
+        getCurrentUser(bot, peer).then(async user => {
+          await sendFirstMessage(user.peer);
         });
     }
   });
@@ -106,14 +106,13 @@ const messagesHandle = bot.subscribeToMessages().pipe(
 const actionsHandle = bot.subscribeToActions().pipe(
   flatMap(async event => {
     let peer = new Peer(event.uid);
+    console.log("PEER", peer);
     if (event.id === "Hour") {
       specifiedTime.hour = event.value;
-      console.log("specified" ,specifiedTime)
       if (specifiedTime.min !== null && specifiedTime.hour !== null)
         scheduleCustomReminder(specifiedTime.hour, specifiedTime.min);
     } else if (event.id === "Minutes") {
       specifiedTime.min = event.value;
-      console.log("specified" ,specifiedTime)
       if (specifiedTime.min !== null && specifiedTime.hour !== null)
         scheduleCustomReminder(specifiedTime.hour, specifiedTime.min , peer);
     } else if (event.id === "30 mins") {
@@ -154,7 +153,7 @@ function scheduleReminder(time , peer) {
   setTimeout(function() {
     sendTextMessage(reminderText ,peer);
   }, timeLeft);
-  const successResponse = "Your mentions have been scheduled";
+  const successResponse = "Your reminder has been scheduled";
 
   sendTextMessage(successResponse ,peer);
 }
@@ -193,7 +192,7 @@ async function getCurrentUser(bot, peer) {
   const current_user = await bot.getUser(peer.id);
   let user = new User(current_user.name , peer);
   activeUsers.push(user);
-  
+  console.log("USER", user);
   return user;
 }
 
