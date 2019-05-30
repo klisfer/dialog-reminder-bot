@@ -146,7 +146,7 @@ action handle functions
 
 ------ */
 function scheduleReminder(time, peer) {
-  console.log("Schedule reminder got called", time);
+  console.log("Schedule reminder got called", time , peer);
   const timeLeft = time * 60000; //milliseconds
   const reminderText =
     "Hey! you asked to remind " + '"' + currentReminder + '"';
@@ -159,7 +159,7 @@ function scheduleReminder(time, peer) {
 }
 
 function scheduleCustomReminder(hour, min, peer) {
-  console.log("Schedule custom reminder got called", hour, min);
+  console.log("Schedule custom reminder got called", hour, min , peer);
   const time = hour + ":" + min;
   const scheduledTime = moment(time, "HH:mm").format("HH:mm");
   const now = moment(Date.now()).format("HH:mm");
